@@ -1,7 +1,9 @@
 import os
+import json
+import urllib.request
+import urllib.parse
 import logging
 from typing import Dict, Any, List, Optional
-import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +13,6 @@ class TMDbClient:
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("TMDB_API_KEY")
-        self.client = httpx.Client(timeout=8.0)
 
     def is_configured(self) -> bool:
         return bool(self.api_key)
@@ -22,33 +23,37 @@ class TMDbClient:
             return self._mock_search(query)
 
         try:
-            resp = self.client.get(
-                f"{self.BASE_URL}/search/multi",
-                params={"api_key": self.api_key, "query": query, "include_adult": "false"}
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                results = []
-                for item in data.get("results", [])[:5]:
-                    media_type = item.get("media_type")
-                    if media_type not in ["movie", "tv"]:
-                        continue
+            params = urllib.parse.urlencode({
+                "api_key": self.api_key,
+                "query": query,
+                "include_adult": "false"
+            })
+            url = f"{self.BASE_URL}/search/multi?{params}"
+            req = urllib.request.Request(url, headers={"User-Agent": "BacklotWire/1.0"})
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
 
-                    title = item.get("name") if media_type == "tv" else item.get("title")
-                    release_date = item.get("first_air_date") if media_type == "tv" else item.get("release_date")
-                    poster_path = item.get("poster_path")
+            results = []
+            for item in data.get("results", [])[:5]:
+                media_type = item.get("media_type")
+                if media_type not in ["movie", "tv"]:
+                    continue
 
-                    results.append({
-                        "id": item.get("id"),
-                        "title": title,
-                        "media_type": media_type,
-                        "overview": item.get("overview", "")[:300],
-                        "release_date": release_date,
-                        "poster_url": f"{self.IMAGE_BASE}{poster_path}" if poster_path else None,
-                        "backdrop_url": f"https://image.tmdb.org/t/p/w1280{item.get('backdrop_path')}" if item.get('backdrop_path') else None,
-                        "vote_average": item.get("vote_average", 0.0)
-                    })
-                return results
+                title = item.get("name") if media_type == "tv" else item.get("title")
+                release_date = item.get("first_air_date") if media_type == "tv" else item.get("release_date")
+                poster_path = item.get("poster_path")
+
+                results.append({
+                    "id": item.get("id"),
+                    "title": title,
+                    "media_type": media_type,
+                    "overview": item.get("overview", "")[:300],
+                    "release_date": release_date,
+                    "poster_url": f"{self.IMAGE_BASE}{poster_path}" if poster_path else None,
+                    "backdrop_url": f"https://image.tmdb.org/t/p/w1280{item.get('backdrop_path')}" if item.get('backdrop_path') else None,
+                    "vote_average": item.get("vote_average", 0.0)
+                })
+            return results
         except Exception as e:
             logger.warning(f"TMDb query failed: {e}")
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from enum import Enum
+from dataclasses import dataclass, field, asdict
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field
 import time
 
 class ProductionStage(str, Enum):
@@ -16,7 +16,8 @@ class ProductionStage(str, Enum):
     RENEWED = "RENEWED"                     # Picked up for next season
     CANCELED = "CANCELED"                   # Canceled / Shelved
 
-class FeedItem(BaseModel):
+@dataclass
+class FeedItem:
     id: str
     title: str
     link: str
@@ -26,26 +27,33 @@ class FeedItem(BaseModel):
     summary: str = ""
     author: Optional[str] = None
     category: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    tags: List[str] = field(default_factory=list)
     entity_name: Optional[str] = None
-    entity_type: Optional[str] = None  # "movie", "tv", "model", "drug", etc.
+    entity_type: Optional[str] = None  # "movie", "tv", etc.
     stage: Optional[ProductionStage] = None
     image_url: Optional[str] = None
-    raw_metadata: Dict[str, Any] = Field(default_factory=dict)
+    raw_metadata: Dict[str, Any] = field(default_factory=dict)
 
     @property
     def age_days(self) -> float:
         return (time.time() - self.pub_epoch) / 86400.0
 
-class DomainConfig(BaseModel):
+    def to_dict(self) -> Dict[str, Any]:
+        d = asdict(self)
+        if self.stage:
+            d["stage"] = self.stage.value
+        return d
+
+@dataclass
+class DomainConfig:
     domain_id: str
     name: str
     tagline: str
     hosts: List[str]
-    theme_primary: str      # e.g. '#D4AF37' (Hollywood Gold)
-    theme_accent: str       # e.g. '#E50914' or '#38bdf8'
-    theme_bg: str = "#0b0d12"
-    feeds: List[Dict[str, Any]] = Field(default_factory=list)
+    theme_primary: str      # e.g. '#D4AF37'
+    theme_accent: str       # e.g. '#E50914'
+    theme_bg: str = "#090B0E"
+    feeds: List[Dict[str, Any]] = field(default_factory=list)
     cache_ttl_seconds: int = 600
     seo_title_template: str = "{name} — Zero-Fluff Live Intelligence Wire"
     seo_desc_template: str = "Real-time, verified updates with zero clickbait. Powered by {name}."

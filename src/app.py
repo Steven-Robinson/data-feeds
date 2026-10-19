@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 from urllib.parse import parse_qs, urlparse
@@ -8,10 +9,22 @@ from src.core.telemetry import evaluate_visitor
 
 logger = logging.getLogger(__name__)
 
+ORIGIN_VERIFY_SECRET = os.getenv("ORIGIN_VERIFY_SECRET", "")
+
 def handle_request(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
     """Universal handler compatible with AWS Lambda Function URLs, API Gateway, and local ASGI."""
     headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
-    host = headers.get("host", "")
+
+    # CloudFront origin verification (if configured)
+    if ORIGIN_VERIFY_SECRET and headers.get("x-origin-verify") != ORIGIN_VERIFY_SECRET:
+        return {
+            "statusCode": 403,
+            "headers": {"Content-Type": "text/plain; charset=utf-8"},
+            "body": "Access Denied: Direct origin access is forbidden. Please visit via official domain."
+        }
+
+    # Resolve host from x-forwarded-host (CloudFront) or host header
+    host = headers.get("x-forwarded-host") or headers.get("host") or ""
     domain_id = registry.resolve_domain(host)
     service = registry.get_service(domain_id)
 
@@ -73,7 +86,32 @@ def handle_request(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]
             "body": json.dumps(counts)
         }
 
-    # 4. Robots.txt
+    # 4. Static Assets (/assets/...)
+    if raw_path.startswith("/assets/"):
+        asset_name = os.path.basename(raw_path)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        asset_path = os.path.join(base_dir, "assets", asset_name)
+        if os.path.isfile(asset_path):
+            import base64
+            with open(asset_path, "rb") as f:
+                raw_bytes = f.read()
+            mime_type = "image/png" if asset_name.endswith(".png") else "image/jpeg"
+            return {
+                "statusCode": 200,
+                "isBase64Encoded": True,
+                "headers": {
+                    "Content-Type": mime_type,
+                    "Cache-Control": "public, max-age=86400, s-maxage=604800",
+                },
+                "body": base64.b64encode(raw_bytes).decode("ascii")
+            }
+        return {
+            "statusCode": 404,
+            "headers": {"Content-Type": "text/plain"},
+            "body": "Asset not found"
+        }
+
+    # 5. Robots.txt
     if raw_path == "/robots.txt":
         return {
             "statusCode": 200,

@@ -43,7 +43,11 @@ class LocalDevHandler(BaseHTTPRequestHandler):
             self.send_header(h, v)
         self.end_headers()
 
-        body_bytes = res.get("body", "").encode("utf-8")
+        if res.get("isBase64Encoded"):
+            import base64
+            body_bytes = base64.b64decode(res.get("body", ""))
+        else:
+            body_bytes = res.get("body", "").encode("utf-8")
         self.wfile.write(body_bytes)
 
 def cmd_sync(args):
