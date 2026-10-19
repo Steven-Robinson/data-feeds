@@ -305,17 +305,30 @@ def render_backlot_ui(
             position: relative;
             background-color: #0b0c10;
             background-image:
-                linear-gradient(to right, rgba(12,14,18,0.96) 0%, rgba(12,14,18,0.72) 45%, rgba(12,14,18,0.94) 100%),
-                linear-gradient(to bottom, rgba(12,14,18,0.5) 0%, rgba(12,14,18,0.98) 100%),
+                linear-gradient(180deg, rgba(8,10,14,0.30) 0%, rgba(8,10,14,0.10) 45%, rgba(8,10,14,0.85) 100%),
                 url('/assets/alley.jpg');
             background-size: cover;
-            background-position: center 38%;
-            border-bottom: 1px solid var(--border-hairline);
-            padding: 40px 20px 32px 20px;
+            background-position: center 36%;
+            border-bottom: 2px solid var(--border-strong);
+            padding: 64px 20px 52px 20px;
         }}
         .hero-inner {{
             max-width: 1240px;
             margin: 0 auto;
+        }}
+        .hero-slate {{
+            display: inline-block;
+            max-width: 820px;
+            background: rgba(11, 13, 17, 0.82);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-left: 4px solid var(--amber-kodak);
+            border-top: 1px solid rgba(255,255,255,0.12);
+            border-right: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 24px 30px;
+            border-radius: 2px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.65);
         }}
         .soundstage-stamped-label {{
             font-family: var(--font-mono);
@@ -351,12 +364,12 @@ def render_backlot_ui(
             display: flex;
             flex-wrap: wrap;
             gap: 16px;
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid rgba(255,255,255,0.08);
+            margin-top: 18px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.1);
             font-family: var(--font-mono);
             font-size: 11px;
-            color: #8c93a3;
+            color: #9ba1b0;
         }}
         .spec-item strong {{
             color: #e5e7eb;
@@ -794,19 +807,21 @@ def render_backlot_ui(
     <!-- Soundstage Alley Hero Banner -->
     <section class="hero-banner">
         <div class="hero-inner">
-            <div class="soundstage-stamped-label">
-                <span>SOUNDSTAGE 24</span>
-                <span>//</span>
-                <span>GLOBAL PRODUCTION MONITOR</span>
-            </div>
-            <h1 class="hero-headline">Hollywood Greenlight & Production Radar</h1>
-            <p class="hero-deck">
-                Aggregated, verified trade intelligence tracking major studio features, network commissions, and streaming orders through every phase of physical production.
-            </p>
-            <div class="hero-spec-strip">
-                <div class="spec-item">ACTIVE DEVELOPMENTS: <strong>{total_count}</strong></div>
-                <div class="spec-item">PRIMARY TRADES: <strong>DEADLINE • VARIETY • THE HOLLYWOOD REPORTER</strong></div>
-                <div class="spec-item">COVERAGE LATENCY: <strong>SUB-10M REAL-TIME FEED</strong></div>
+            <div class="hero-slate">
+                <div class="soundstage-stamped-label">
+                    <span>SOUNDSTAGE 24</span>
+                    <span>//</span>
+                    <span>GLOBAL PRODUCTION MONITOR</span>
+                </div>
+                <h1 class="hero-headline">Hollywood Greenlight & Production Radar</h1>
+                <p class="hero-deck">
+                    Aggregated, verified trade intelligence tracking major studio features, network commissions, and streaming orders through every phase of physical production.
+                </p>
+                <div class="hero-spec-strip">
+                    <div class="spec-item">ACTIVE DEVELOPMENTS: <strong>{total_count}</strong></div>
+                    <div class="spec-item">PRIMARY TRADES: <strong>DEADLINE • VARIETY • THR</strong></div>
+                    <div class="spec-item">COVERAGE LATENCY: <strong>SUB-10M REAL-TIME</strong></div>
+                </div>
             </div>
         </div>
     </section>
