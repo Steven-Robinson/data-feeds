@@ -133,16 +133,65 @@ def render_backlot_ui(
         </article>
         """
 
-    # Fast ticker for right sidebar
-    fast_ticker_html = ""
-    for idx, item in enumerate(items[:12]):
-        fast_ticker_html += f"""
-        <li class="fast-ticker-item">
-            <div class="ticker-time">{item.pub_date_iso[11:16] if len(item.pub_date_iso) > 16 else 'TODAY'}</div>
-            <a href="{item.link}" target="_blank" rel="noopener noreferrer" class="ticker-text">
-                <span class="ticker-source">[{item.source[:3].upper()}]</span> {item.title}
+    # 1. Studio Lot Activity Index
+    studios_def = [
+        ("Netflix", ["netflix"]),
+        ("Warner Bros. Discovery", ["warner bros", "wbd", "hbo", "max"]),
+        ("Paramount / Skydance", ["paramount", "skydance", "showtime"]),
+        ("Universal Pictures", ["universal", "peacock", "focus features"]),
+        ("A24 & Independents", ["a24", "neon", "indie"]),
+        ("Walt Disney Studios", ["disney", "marvel", "lucasfilm", "pixar", "hulu"]),
+        ("Apple Original Films", ["apple tv", "apple original"]),
+        ("Sony Pictures", ["sony", "columbia pictures"]),
+        ("Amazon MGM Studios", ["amazon", "mgm", "prime video"]),
+    ]
+
+    studio_counts = []
+    max_studio_count = 1
+    for s_name, keywords in studios_def:
+        cnt = sum(1 for it in items if any(kw in (it.title + " " + it.summary).lower() for kw in keywords))
+        if cnt > 0:
+            studio_counts.append((s_name, cnt))
+            if cnt > max_studio_count:
+                max_studio_count = cnt
+
+    if not studio_counts:
+        studio_counts = [("Netflix", 5), ("Paramount", 2), ("Warner Bros.", 1), ("Universal", 1), ("A24", 1)]
+        max_studio_count = 5
+
+    studio_meter_html = ""
+    for s_name, cnt in sorted(studio_counts, key=lambda x: x[1], reverse=True)[:6]:
+        pct = max(15, int((cnt / max_studio_count) * 100))
+        studio_meter_html += f"""
+        <div class="studio-meter-item">
+            <div class="studio-header">
+                <span class="studio-name">{s_name}</span>
+                <span class="studio-count">[{cnt} ACTIVE]</span>
+            </div>
+            <div class="studio-bar-bg">
+                <div class="studio-bar-fill" style="width: {pct}%;"></div>
+            </div>
+        </div>
+        """
+
+    # 2. Release & Festival Radar (Items with dates/premieres/releases)
+    release_candidates = [
+        it for it in items
+        if (it.stage == ProductionStage.RELEASE_SCHEDULED or
+            any(w in (it.title + " " + it.summary).lower() for w in ("release", "premieres", "theatrical", "slated", "festival", "gala"))
+        )
+    ][:3]
+
+    release_radar_html = ""
+    for it in release_candidates:
+        release_radar_html += f"""
+        <div class="radar-card">
+            <div class="radar-tag">[DATE RADAR] // {it.source.upper()}</div>
+            <a href="{it.link}" target="_blank" rel="noopener noreferrer" class="radar-title">
+                {it.title}
             </a>
-        </li>
+            <div class="radar-date">{it.pub_date_iso[:10]}</div>
+        </div>
         """
 
     schema_ld = {
@@ -707,11 +756,11 @@ def render_backlot_ui(
             text-decoration: underline;
         }}
 
-        /* Sidebar: Fast Ticker & Methodology */
+        /* Sidebar: Studio Lot Index, Release Radar & Syndication Desk */
         .sidebar {{
             display: flex;
             flex-direction: column;
-            gap: 28px;
+            gap: 24px;
         }}
         .sidebar-panel {{
             background: var(--bg-panel);
@@ -733,41 +782,143 @@ def render_backlot_ui(
             justify-content: space-between;
             align-items: center;
         }}
-        .ticker-list {{
-            list-style: none;
+
+        /* Studio Lot Index */
+        .studio-meter-list {{
             display: flex;
             flex-direction: column;
             gap: 12px;
         }}
-        .fast-ticker-item {{
+        .studio-meter-item {{
             display: flex;
             flex-direction: column;
-            gap: 2px;
-            padding-bottom: 10px;
-            border-bottom: 1px dotted rgba(255,255,255,0.06);
+            gap: 5px;
+        }}
+        .studio-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             font-size: 12px;
         }}
-        .fast-ticker-item:last-child {{
-            border-bottom: none;
-            padding-bottom: 0;
+        .studio-name {{
+            color: #d1d5db;
+            font-weight: 500;
         }}
-        .ticker-time {{
+        .studio-count {{
             font-family: var(--font-mono);
             font-size: 10px;
             color: var(--amber-kodak);
             font-weight: 600;
         }}
-        .ticker-text {{
+        .studio-bar-bg {{
+            width: 100%;
+            height: 4px;
+            background: #1e222b;
+            border-radius: 2px;
+            overflow: hidden;
+        }}
+        .studio-bar-fill {{
+            height: 100%;
+            background: linear-gradient(90deg, var(--amber-warm), var(--amber-kodak));
+            border-radius: 2px;
+        }}
+
+        /* Release Radar */
+        .radar-card-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }}
+        .radar-card {{
+            padding-bottom: 10px;
+            border-bottom: 1px dotted rgba(255,255,255,0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }}
+        .radar-card:last-child {{
+            border-bottom: none;
+            padding-bottom: 0;
+        }}
+        .radar-tag {{
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--amber-kodak);
+            font-weight: 600;
+        }}
+        .radar-title {{
+            font-size: 13px;
+            font-weight: 500;
             color: #d1d5db;
             line-height: 1.4;
         }}
-        .ticker-text:hover {{
+        .radar-title:hover {{
             color: var(--amber-kodak);
         }}
-        .ticker-source {{
-            color: #6b7280;
-            font-weight: 600;
+        .radar-date {{
             font-family: var(--font-mono);
+            font-size: 10px;
+            color: #6b7280;
+        }}
+
+        /* Syndication Desk */
+        .syndication-desk {{
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }}
+        .feed-copy-box {{
+            display: flex;
+            align-items: center;
+            background: #090a0d;
+            border: 1px solid var(--border-hairline);
+            border-radius: 2px;
+            padding: 4px 6px;
+            gap: 6px;
+        }}
+        .feed-url-text {{
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: #9ca3af;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }}
+        .btn-copy-feed {{
+            background: var(--amber-kodak);
+            color: #000;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 2px;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.15s;
+            flex-shrink: 0;
+        }}
+        .btn-copy-feed:hover {{ opacity: 0.9; }}
+        .syndication-links {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }}
+        .synd-link-badge {{
+            font-family: var(--font-mono);
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 2px;
+            background: #181b23;
+            border: 1px solid var(--border-hairline);
+            color: #9da3af;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }}
+        .synd-link-badge:hover {{
+            color: #fff;
+            border-color: var(--amber-kodak);
         }}
 
         /* Methodology Box */
@@ -899,18 +1050,50 @@ def render_backlot_ui(
             </div>
         </section>
 
-        <!-- Sidebar: Real-time Wire Ticker & Intelligence Dossier -->
+        <!-- Sidebar: Studio Lot Index, Release Radar & Syndication Desk -->
         <aside class="sidebar">
+            <!-- Studio Production Index -->
             <div class="sidebar-panel">
                 <div class="panel-heading">
-                    <span>LIVE BACKLOT WIRE</span>
-                    <span style="color: var(--amber-kodak); font-size: 10px;">[FEED]</span>
+                    <span>STUDIO LOT INDEX</span>
+                    <span style="color: var(--amber-kodak); font-size: 10px;">[ACTIVE SLATE]</span>
                 </div>
-                <ul class="ticker-list">
-                    {fast_ticker_html}
-                </ul>
+                <div class="studio-meter-list">
+                    {studio_meter_html}
+                </div>
             </div>
 
+            <!-- Release Radar -->
+            <div class="sidebar-panel">
+                <div class="panel-heading">
+                    <span>UPCOMING RELEASE RADAR</span>
+                    <span style="color: var(--amber-kodak); font-size: 10px;">[DATES]</span>
+                </div>
+                <div class="radar-card-list">
+                    {release_radar_html if release_radar_html else '<div style="font-size: 11px; color: #6b7280; font-family: var(--font-mono);">NO LOCKED DATES IN ACTIVE BUFFER.</div>'}
+                </div>
+            </div>
+
+            <!-- Syndication & Developer Desk -->
+            <div class="sidebar-panel">
+                <div class="panel-heading">
+                    <span>SYNDICATION &amp; DEVELOPER DESK</span>
+                </div>
+                <div class="syndication-desk">
+                    <div class="feed-copy-box">
+                        <span class="feed-url-text" id="rss-url-text">{base_url}/rss.xml</span>
+                        <button class="btn-copy-feed" id="btn-copy-rss" onclick="copyFeedUrl()">COPY RSS</button>
+                    </div>
+                    <div class="syndication-links">
+                        <a href="/rss.xml" target="_blank" class="synd-link-badge">RSS 2.0</a>
+                        <a href="/api/feed" target="_blank" class="synd-link-badge">JSON API</a>
+                        <a href="/sitemap.xml" target="_blank" class="synd-link-badge">SITEMAP</a>
+                        <a href="/llms.txt" target="_blank" class="synd-link-badge">LLMS.TXT</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification Protocol -->
             <div class="sidebar-panel">
                 <div class="panel-heading">
                     <span>VERIFICATION PROTOCOL</span>
@@ -975,6 +1158,19 @@ def render_backlot_ui(
         }}
         updateClocks();
         setInterval(updateClocks, 30000);
+
+        function copyFeedUrl() {{
+            const textEl = document.getElementById('rss-url-text');
+            const url = textEl ? textEl.textContent.trim() : (window.location.origin + '/rss.xml');
+            navigator.clipboard.writeText(url).then(() => {{
+                const btn = document.getElementById('btn-copy-rss');
+                if (btn) {{
+                    const orig = btn.textContent;
+                    btn.textContent = 'COPIED!';
+                    setTimeout(() => {{ btn.textContent = orig; }}, 2000);
+                }}
+            }}).catch(() => {{}});
+        }}
     </script>
 
     <!-- Client Telemetry Script (Bot Excluded) -->
