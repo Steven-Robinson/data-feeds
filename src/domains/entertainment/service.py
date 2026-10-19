@@ -3,7 +3,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from src.core.models import FeedItem, ProductionStage
 from src.core.rss_engine import RSSEngine
-from src.domains.entertainment.config import ENTERTAINMENT_CONFIG, EXCLUSION_KEYWORDS
+from src.domains.entertainment.config import ENTERTAINMENT_CONFIG, EXCLUSION_KEYWORDS, STUDIOS_CONFIG
 from src.domains.entertainment.stage_classifier import classify_stage, extract_title_candidate
 from src.domains.entertainment.tmdb import TMDbClient
 
@@ -59,11 +59,23 @@ class EntertainmentService:
         logger.info(f"Synced {len(all_items)} entertainment intelligence items.")
         return all_items
 
-    def get_radar_items(self, stage: Optional[ProductionStage] = None) -> List[FeedItem]:
-        """Retrieve items filtered optionally by production stage."""
+    def get_radar_items(
+        self,
+        stage: Optional[ProductionStage] = None,
+        studio: Optional[str] = None
+    ) -> List[FeedItem]:
+        """Retrieve items filtered optionally by production stage and/or studio."""
         items = self.sync_feeds()
         if stage:
-            return [it for it in items if it.stage == stage]
+            items = [it for it in items if it.stage == stage]
+        if studio:
+            studio_def = next((s for s in STUDIOS_CONFIG if s["slug"] == studio.lower()), None)
+            if studio_def:
+                kw_list = studio_def["keywords"]
+                items = [
+                    it for it in items
+                    if any(kw in (it.title + " " + it.summary).lower() for kw in kw_list)
+                ]
         return items
 
     def get_stage_breakdown(self) -> Dict[str, int]:

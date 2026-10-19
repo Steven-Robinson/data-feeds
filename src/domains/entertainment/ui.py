@@ -1,7 +1,7 @@
 import json
 from typing import List, Optional
 from src.core.models import FeedItem, ProductionStage
-from src.domains.entertainment.config import ENTERTAINMENT_CONFIG
+from src.domains.entertainment.config import ENTERTAINMENT_CONFIG, STUDIOS_CONFIG
 
 STAGE_BADGES = {
     ProductionStage.GREENLIT: ("#f59e0b", "#000000", "GREENLIT"),
@@ -18,13 +18,23 @@ STAGE_BADGES = {
 def render_backlot_ui(
     items: List[FeedItem],
     current_stage: Optional[str] = None,
+    current_studio: Optional[str] = None,
     stage_counts: Optional[dict] = None,
+    all_items: Optional[List[FeedItem]] = None,
     base_url: str = "https://backlotwire.com"
 ) -> str:
     stage_counts = stage_counts or {}
     total_count = len(items)
     base_url = base_url.rstrip("/")
-    canonical_url = f"{base_url}/?stage={current_stage}" if current_stage else f"{base_url}/"
+
+    # Build canonical URL
+    params = []
+    if current_stage:
+        params.append(f"stage={current_stage}")
+    if current_studio:
+        params.append(f"studio={current_studio}")
+    query_str = f"?{'&'.join(params)}" if params else ""
+    canonical_url = f"{base_url}/{query_str}"
 
     # Stages for the filter switchboard
     stages_to_show = [
@@ -41,7 +51,12 @@ def render_backlot_ui(
     for st_val, label, count in stages_to_show:
         is_active = (current_stage == st_val) or (current_stage is None and st_val is None)
         active_cls = "stage-btn-active" if is_active else "stage-btn-inactive"
-        href = f"?stage={st_val}" if st_val else "/"
+        p = []
+        if st_val:
+            p.append(f"stage={st_val}")
+        if current_studio:
+            p.append(f"studio={current_studio}")
+        href = f"?{'&'.join(p)}" if p else "/"
         pipeline_html += f"""
         <a href="{href}" class="stage-switch-btn {active_cls}">
             <span class="stage-name">{label}</span>
@@ -134,45 +149,79 @@ def render_backlot_ui(
         """
 
     # 1. Studio Lot Activity Index
-    studios_def = [
-        ("Netflix", ["netflix"]),
-        ("Warner Bros. Discovery", ["warner bros", "wbd", "hbo", "max"]),
-        ("Paramount / Skydance", ["paramount", "skydance", "showtime"]),
-        ("Universal Pictures", ["universal", "peacock", "focus features"]),
-        ("A24 & Independents", ["a24", "neon", "indie"]),
-        ("Walt Disney Studios", ["disney", "marvel", "lucasfilm", "pixar", "hulu"]),
-        ("Apple Original Films", ["apple tv", "apple original"]),
-        ("Sony Pictures", ["sony", "columbia pictures"]),
-        ("Amazon MGM Studios", ["amazon", "mgm", "prime video"]),
-    ]
+    source_for_counts = all_items if all_items is not None else items
 
     studio_counts = []
     max_studio_count = 1
-    for s_name, keywords in studios_def:
-        cnt = sum(1 for it in items if any(kw in (it.title + " " + it.summary).lower() for kw in keywords))
+    for s in STUDIOS_CONFIG:
+        cnt = sum(1 for it in source_for_counts if any(kw in (it.title + " " + it.summary).lower() for kw in s["keywords"]))
         if cnt > 0:
-            studio_counts.append((s_name, cnt))
+            studio_counts.append((s, cnt))
             if cnt > max_studio_count:
                 max_studio_count = cnt
 
     if not studio_counts:
-        studio_counts = [("Netflix", 5), ("Paramount", 2), ("Warner Bros.", 1), ("Universal", 1), ("A24", 1)]
-        max_studio_count = 5
+        for s in STUDIOS_CONFIG[:5]:
+            studio_counts.append((s, 2))
+        max_studio_count = 2
+
+    # Active studio details
+    active_studio_obj = next((s for s in STUDIOS_CONFIG if s["slug"] == current_studio), None) if current_studio else None
+    active_studio_name = active_studio_obj["name"] if active_studio_obj else (current_studio.upper() if current_studio else None)
 
     studio_meter_html = ""
-    for s_name, cnt in sorted(studio_counts, key=lambda x: x[1], reverse=True)[:6]:
-        pct = max(15, int((cnt / max_studio_count) * 100))
+    for s, cnt in sorted(studio_counts, key=lambda x: x[1], reverse=True)[:8]:
+        pct = max(14, int((cnt / max_studio_count) * 100))
+        is_active = (current_studio == s["slug"])
+        active_cls = " active-studio" if is_active else ""
+        count_badge = f"[{cnt} ACTIVE]" if not is_active else f"[{cnt} SELECTED &times;]"
+
+        # Toggle URL: if active, clicking clears studio filter; if inactive, sets it
+        p = []
+        if current_stage:
+            p.append(f"stage={current_stage}")
+        if not is_active:
+            p.append(f"studio={s['slug']}")
+        href = f"?{'&'.join(p)}" if p else "/"
+
         studio_meter_html += f"""
-        <div class="studio-meter-item">
+        <a href="{href}" class="studio-meter-link{active_cls}" title="Filter intelligence wire by {s['name']}">
             <div class="studio-header">
-                <span class="studio-name">{s_name}</span>
-                <span class="studio-count">[{cnt} ACTIVE]</span>
+                <span class="studio-name">{s['name']}</span>
+                <span class="studio-count">{count_badge}</span>
             </div>
             <div class="studio-bar-bg">
                 <div class="studio-bar-fill" style="width: {pct}%;"></div>
             </div>
+        </a>
+        """
+
+    # Active studio banner in main column
+    active_studio_banner_html = ""
+    if current_studio:
+        p = []
+        if current_stage:
+            p.append(f"stage={current_stage}")
+        reset_studio_href = f"?{'&'.join(p)}" if p else "/"
+        active_studio_banner_html = f"""
+        <div class="active-studio-banner">
+            <div class="active-studio-info">
+                <span class="active-studio-tag">[STUDIO LOT FILTER]</span>
+                <span class="active-studio-name">{active_studio_name.upper()}</span>
+                <span class="active-studio-count">({total_count} {'dispatch' if total_count == 1 else 'dispatches'})</span>
+            </div>
+            <a href="{reset_studio_href}" class="active-studio-clear" title="Clear studio filter">&times; SHOW ALL STUDIOS</a>
         </div>
         """
+
+    if current_stage and current_studio:
+        desk_heading = f"DESK: {current_stage} // {active_studio_name.upper()}"
+    elif current_stage:
+        desk_heading = f"DESK: {current_stage}"
+    elif current_studio:
+        desk_heading = f"STUDIO LOT: {active_studio_name.upper()}"
+    else:
+        desk_heading = "ACTIVE PRODUCTION DESK"
 
     # 2. Release & Festival Radar (Items with dates/premieres/releases)
     release_candidates = [
@@ -783,16 +832,98 @@ def render_backlot_ui(
             align-items: center;
         }}
 
+        /* Active Studio Filter Banner */
+        .active-studio-banner {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: rgba(245, 158, 11, 0.08);
+            border-left: 3px solid var(--amber-kodak);
+            border-top: 1px solid rgba(245, 158, 11, 0.2);
+            border-right: 1px solid rgba(245, 158, 11, 0.1);
+            border-bottom: 1px solid rgba(245, 158, 11, 0.1);
+            padding: 10px 14px;
+            border-radius: 2px;
+            margin-bottom: 24px;
+            font-family: var(--font-mono);
+        }}
+        .active-studio-info {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 11px;
+        }}
+        .active-studio-tag {{
+            color: #9ca3af;
+            letter-spacing: 0.08em;
+        }}
+        .active-studio-name {{
+            color: #ffffff;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            background: rgba(245, 158, 11, 0.2);
+            padding: 2px 7px;
+            border-radius: 2px;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+        }}
+        .active-studio-count {{
+            color: #9ca3af;
+            font-size: 11px;
+        }}
+        .active-studio-clear {{
+            color: #fca5a5;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-decoration: none;
+            padding: 4px 8px;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 2px;
+            white-space: nowrap;
+            transition: all 0.15s;
+        }}
+        .active-studio-clear:hover {{
+            background: rgba(239, 68, 68, 0.25);
+            color: #ffffff;
+            border-color: rgba(239, 68, 68, 0.5);
+        }}
+
         /* Studio Lot Index */
         .studio-meter-list {{
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
         }}
-        .studio-meter-item {{
+        .studio-meter-link {{
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 6px;
+            padding: 8px 10px;
+            margin: 0 -10px;
+            border-radius: 3px;
+            border: 1px solid transparent;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.15s ease;
+        }}
+        .studio-meter-link:hover {{
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.12);
+        }}
+        .studio-meter-link.active-studio {{
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.45);
+        }}
+        .studio-meter-link.active-studio .studio-name {{
+            color: var(--amber-kodak);
+            font-weight: 700;
+        }}
+        .studio-meter-link.active-studio .studio-bar-fill {{
+            background: var(--amber-kodak);
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
         }}
         .studio-header {{
             display: flex;
@@ -803,6 +934,7 @@ def render_backlot_ui(
         .studio-name {{
             color: #d1d5db;
             font-weight: 500;
+            transition: color 0.15s;
         }}
         .studio-count {{
             font-family: var(--font-mono);
@@ -1039,9 +1171,11 @@ def render_backlot_ui(
         <!-- Main Column: Lead Story & Wire Stream -->
         <section>
             <div class="desk-header">
-                <h2 class="desk-title">{f'DESK: {current_stage}' if current_stage else 'ACTIVE PRODUCTION DESK'}</h2>
+                <h2 class="desk-title">{desk_heading}</h2>
                 <span class="desk-meta">SHOWING {total_count} ITEMS</span>
             </div>
+
+            {active_studio_banner_html}
 
             {lead_html}
 

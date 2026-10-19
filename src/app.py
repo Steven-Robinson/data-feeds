@@ -73,7 +73,8 @@ def handle_request(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]
     # 2. JSON Feed API
     if raw_path == "/api/feed":
         stage_filter = query_params.get("stage")
-        items = service.get_radar_items(stage=stage_filter)
+        studio_filter = query_params.get("studio")
+        items = service.get_radar_items(stage=stage_filter, studio=studio_filter)
         return {
             "statusCode": 200,
             "headers": {
@@ -81,7 +82,7 @@ def handle_request(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]
                 "Access-Control-Allow-Origin": "*",
                 "Cache-Control": "public, max-age=300"
             },
-            "body": json.dumps([it.model_dump() for it in items])
+            "body": json.dumps([it.to_dict() for it in items])
         }
 
     # 3. Stage breakdown API
@@ -201,13 +202,17 @@ def handle_request(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]
 
     # 11. Default: SSR Web Interface
     stage_filter = query_params.get("stage")
-    items = service.get_radar_items(stage=stage_filter)
+    studio_filter = query_params.get("studio")
+    items = service.get_radar_items(stage=stage_filter, studio=studio_filter)
+    all_unfiltered_items = service.get_radar_items()
     stage_counts = service.get_stage_breakdown()
 
     html = render_backlot_ui(
         items=items,
         current_stage=stage_filter,
+        current_studio=studio_filter,
         stage_counts=stage_counts,
+        all_items=all_unfiltered_items,
         base_url=base_url
     )
 

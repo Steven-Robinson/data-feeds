@@ -44,6 +44,9 @@ class FeedItem:
             d["stage"] = self.stage.value
         return d
 
+    def model_dump(self) -> Dict[str, Any]:
+        return self.to_dict()
+
 @dataclass
 class DomainConfig:
     domain_id: str

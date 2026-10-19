@@ -46,3 +46,15 @@ EXCLUSION_KEYWORDS = [
     "box office flop", "scandal", "real estate", "mansion", "arrested", "lawsuit settled",
     "feud", "ozempic", "diet secret", "horoscope"
 ]
+
+STUDIOS_CONFIG = [
+    {"slug": "netflix", "name": "Netflix", "keywords": ["netflix"]},
+    {"slug": "warner-bros", "name": "Warner Bros. Discovery", "keywords": ["warner bros", "wbd", "hbo", "max"]},
+    {"slug": "paramount", "name": "Paramount / Skydance", "keywords": ["paramount", "skydance", "showtime"]},
+    {"slug": "universal", "name": "Universal Pictures", "keywords": ["universal", "peacock", "focus features"]},
+    {"slug": "a24", "name": "A24 & Independents", "keywords": ["a24", "neon", "indie"]},
+    {"slug": "disney", "name": "Walt Disney Studios", "keywords": ["disney", "marvel", "lucasfilm", "pixar", "hulu"]},
+    {"slug": "apple", "name": "Apple Original Films", "keywords": ["apple tv", "apple original"]},
+    {"slug": "sony", "name": "Sony Pictures", "keywords": ["sony", "columbia pictures"]},
+    {"slug": "amazon-mgm", "name": "Amazon MGM Studios", "keywords": ["amazon", "mgm", "prime video"]},
+]
