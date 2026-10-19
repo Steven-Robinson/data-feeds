@@ -30,7 +30,11 @@ def handle_request(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]
     service = registry.get_service(domain_id)
 
     scheme = headers.get("x-forwarded-proto") or "https"
-    host_val = host or "backlotwire.com"
+    # Canonical host handling: ignore internal AWS Lambda URL hostnames for SEO/RSS
+    if not host or "lambda-url" in host or host.endswith(".on.aws"):
+        host_val = "backlotwire.com"
+    else:
+        host_val = host
     clean_host = host_val.split(":")[0]
     base_url = f"{scheme}://{host_val}"
 

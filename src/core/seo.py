@@ -44,10 +44,8 @@ def generate_rss_feed(items: List[FeedItem], base_url: str = "https://backlotwir
             except Exception:
                 pub_date = now_rfc822
 
-        enclosure_xml = ""
-        if it.image_url:
-            img_url = escape_xml(it.image_url)
-            enclosure_xml = f'<enclosure url="{img_url}" length="0" type="image/jpeg" />'
+        img_url = it.image_url or f"{base_url}/assets/default-article.jpg"
+        enclosure_xml = f'<enclosure url="{escape_xml(img_url)}" length="0" type="image/jpeg" />'
 
         items_xml.append(f"""
         <item>

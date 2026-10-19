@@ -56,13 +56,12 @@ def render_backlot_ui(
     lead_html = ""
     if lead_story:
         bg_col, fg_col, badge_text = STAGE_BADGES.get(lead_story.stage, ("#f59e0b", "#000000", "TRADE REPORT"))
-        lead_img = ""
-        if lead_story.image_url:
-            lead_img = f"""
-            <div class="lead-thumb-wrap">
-                <img src="{lead_story.image_url}" alt="{lead_story.title}" class="lead-thumb" loading="eager" />
-            </div>
-            """
+        lead_img_url = lead_story.image_url or "/assets/default-article.jpg"
+        lead_img = f"""
+        <div class="lead-thumb-wrap">
+            <img src="{lead_img_url}" alt="{lead_story.title}" class="lead-thumb" loading="eager" />
+        </div>
+        """
         lead_html = f"""
         <article class="lead-article-card">
             <div class="lead-meta-bar">
@@ -98,13 +97,12 @@ def render_backlot_ui(
     wire_rows_html = ""
     for item in wire_items:
         bg_col, fg_col, badge_text = STAGE_BADGES.get(item.stage, ("#64748b", "#ffffff", "TRADE REPORT"))
-        thumb_markup = ""
-        if item.image_url:
-            thumb_markup = f"""
-            <div class="row-thumb-wrap">
-                <img src="{item.image_url}" alt="{item.title}" class="row-thumb" loading="lazy" />
-            </div>
-            """
+        thumb_url = item.image_url or "/assets/default-article.jpg"
+        thumb_markup = f"""
+        <div class="row-thumb-wrap">
+            <img src="{thumb_url}" alt="{item.title}" class="row-thumb" loading="lazy" />
+        </div>
+        """
 
         wire_rows_html += f"""
         <article class="wire-row">
