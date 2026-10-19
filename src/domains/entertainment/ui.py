@@ -18,10 +18,13 @@ STAGE_BADGES = {
 def render_backlot_ui(
     items: List[FeedItem],
     current_stage: Optional[str] = None,
-    stage_counts: Optional[dict] = None
+    stage_counts: Optional[dict] = None,
+    base_url: str = "https://backlotwire.com"
 ) -> str:
     stage_counts = stage_counts or {}
     total_count = len(items)
+    base_url = base_url.rstrip("/")
+    canonical_url = f"{base_url}/?stage={current_stage}" if current_stage else f"{base_url}/"
 
     # Stages for the filter switchboard
     stages_to_show = [
@@ -146,10 +149,40 @@ def render_backlot_ui(
 
     schema_ld = {
         "@context": "https://schema.org",
-        "@type": "NewsMediaOrganization",
-        "name": "Backlot Wire",
-        "url": "https://backlotwire.com",
-        "description": "Zero-fluff film and television production intelligence and release radar."
+        "@graph": [
+            {
+                "@type": "NewsMediaOrganization",
+                "name": "Backlot Wire",
+                "url": base_url,
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": f"{base_url}/assets/mark.jpg"
+                },
+                "description": "Zero-fluff film and television production intelligence and release radar."
+            },
+            {
+                "@type": "ItemList",
+                "name": "Active Production Radar Dispatches",
+                "itemListElement": [
+                    {
+                        "@type": "ListItem",
+                        "position": i + 1,
+                        "item": {
+                            "@type": "NewsArticle",
+                            "headline": it.title,
+                            "url": it.link,
+                            "datePublished": it.pub_date_iso,
+                            "description": it.summary,
+                            "publisher": {
+                                "@type": "Organization",
+                                "name": it.source
+                            }
+                        }
+                    }
+                    for i, it in enumerate(items[:10])
+                ]
+            }
+        ]
     }
 
     return f"""<!DOCTYPE html>
@@ -159,6 +192,25 @@ def render_backlot_ui(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{ENTERTAINMENT_CONFIG.seo_title_template}</title>
     <meta name="description" content="{ENTERTAINMENT_CONFIG.seo_desc_template}">
+    <link rel="canonical" href="{canonical_url}">
+    <link rel="alternate" type="application/rss+xml" title="Backlot Wire RSS Feed" href="{base_url}/rss.xml">
+    
+    <!-- OpenGraph Meta Tags -->
+    <meta property="og:site_name" content="Backlot Wire">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{ENTERTAINMENT_CONFIG.seo_title_template}">
+    <meta property="og:description" content="{ENTERTAINMENT_CONFIG.seo_desc_template}">
+    <meta property="og:url" content="{canonical_url}">
+    <meta property="og:image" content="{base_url}/assets/alley.jpg">
+    <meta property="og:image:width" content="1400">
+    <meta property="og:image:height" content="800">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{ENTERTAINMENT_CONFIG.seo_title_template}">
+    <meta name="twitter:description" content="{ENTERTAINMENT_CONFIG.seo_desc_template}">
+    <meta name="twitter:image" content="{base_url}/assets/alley.jpg">
+
     <link rel="icon" type="image/jpeg" href="/assets/mark.jpg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
